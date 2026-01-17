@@ -11,7 +11,7 @@ from webdriver_manager.chrome import ChromeDriverManager
 
 # --- 1. HEADLESS BROWSER SETUP (Required for GitHub) ---
 options = Options()
-options.add_argument("--headless")  # Runs without visual UI
+options.add_argument("--headless")
 options.add_argument("--no-sandbox")
 options.add_argument("--disable-dev-shm-usage")
 options.add_argument("--window-size=1920,1080")
@@ -73,11 +73,10 @@ def monitor_auctions():
     # --- SAFETY TIMEOUT FOR GITHUB ---
     # We add a max limit so the script doesn't run forever and consume all your free GitHub minutes
     start_time = time.time()
-    max_duration = 50 * 60  # 50 minutes max run time
+    max_duration = 3 * 60  # 50 minutes max run time
 
     try:
         while True:
-            # Check Max Time
             if time.time() - start_time > max_duration:
                 print("⚠️ Max execution time reached. Force saving and exiting.")
                 break
@@ -109,6 +108,22 @@ def monitor_auctions():
                     row = d_el.find_element(By.XPATH, "./ancestor::section[1]")
                     p_el = row.find_element(By.ID, "domainPrice")
                     t_el = row.find_element(By.ID, "time-remaining")
+                    
+                    # --- NEW DATA EXTRACTION ---
+                    try:
+                        # Find Type by class (Private Seller / Pre-Release)
+                        type_el = row.find_element(By.CSS_SELECTOR, ".dc-table-search-results__type")
+                        type_text = type_el.get_attribute("textContent").strip()
+                    except:
+                        type_text = "N/A"
+
+                    try:
+                        # Find Bids by ID 'bidCount'
+                        bid_el = row.find_element(By.ID, "bidCount")
+                        bid_text = bid_el.get_attribute("textContent").strip()
+                    except:
+                        bid_text = "0"
+                    # ---------------------------
 
                     p_raw = p_el.get_attribute("textContent").strip()
                     t_text = t_el.get_attribute("textContent").strip()
@@ -131,7 +146,6 @@ def monitor_auctions():
                         is_frozen = True
                         print(f"❄️ Detected Frozen Timer for {d_text} ({t_text}). Marking Finalized.")
 
-                    # --- ORIGINAL ANTI-SNIPING LOGIC ---
                     if "Ended" in t_text or not t_text or len(t_text) < 2 or is_frozen:
                         if is_frozen:
                             status = "Finalized"
@@ -151,31 +165,34 @@ def monitor_auctions():
                         status = "Active"
                         all_ended = False
 
-                    # Update master list (Preserving Logic Fields)
+                    # Update master list (Added Type and Bids)
                     master_tracker[d_text] = {
                         "Price": p_clean, 
                         "Status": status, 
-                        "Raw_Time": t_text,       # Keep for internal logic
-                        "Stuck_Count": stuck_count, # Keep for internal logic
+                        "Type": type_text,     # NEW
+                        "Bids": bid_text,      # NEW
+                        "Raw_Time": t_text,       
+                        "Stuck_Count": stuck_count, 
                         "Date": time.strftime("%Y-%m-%d")
                     }
                     
                     if status == "Finalized":
                         print(f"✅ SOLD: {d_text} | {p_clean}")
                     else:
-                        print(f"🕒 {d_text} | {p_clean}")
+                        print(f"🕒 {d_text} | {p_clean} | {type_text} | {bid_text} bids")
 
                 except Exception:
                     continue
 
             # --- CSV UPDATE (CLEAN FORMAT FOR WORDPRESS) ---
             if len(master_tracker) > 0:
-                # We filter out 'Raw_Time' and 'Stuck_Count' here
                 clean_list = [{
                     "Domain": k, 
                     "Price": v['Price'], 
                     "Status": v['Status'], 
-                    "Date": v['Date']
+                    "Date": v['Date'],
+                    "Type": v.get('Type', 'N/A'), # NEW COLUMN
+                    "Bids": v.get('Bids', '0')    # NEW COLUMN
                 } for k, v in master_tracker.items()]
                 
                 df = pd.DataFrame(clean_list)
@@ -194,7 +211,9 @@ def monitor_auctions():
                     "Domain": k, 
                     "Price": v['Price'], 
                     "Status": v['Status'], 
-                    "Date": v['Date']
+                    "Date": v['Date'],
+                    "Type": v.get('Type', 'N/A'),
+                    "Bids": v.get('Bids', '0')
                 } for k, v in master_tracker.items()]
                 
                 pd.DataFrame(final_list).to_csv(save_path, index=False)
@@ -209,6 +228,4 @@ def monitor_auctions():
         driver.quit()
 
 if __name__ == "__main__":
-
     monitor_auctions()
-
