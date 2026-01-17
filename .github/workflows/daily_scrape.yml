@@ -2,7 +2,7 @@ name: Daily DropDax Scraper
 
 on:
   schedule:
-    # Runs at 20:00 UTC (Approx end of work day) - Change as needed
+    # Runs at 19:55 UTC (Approx end of work day) - Change as needed
     - cron: '55 19 * * *'
   workflow_dispatch: # Allows you to run it manually with a button click
 
