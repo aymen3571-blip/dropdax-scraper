@@ -73,7 +73,7 @@ def monitor_auctions():
     # --- SAFETY TIMEOUT FOR GITHUB ---
     # We add a max limit so the script doesn't run forever and consume all your free GitHub minutes
     start_time = time.time()
-    max_duration = 3 * 60  # 50 minutes max run time
+    max_duration = 60 * 60  # 60 minutes max run time
 
     try:
         while True:
@@ -229,3 +229,4 @@ def monitor_auctions():
 
 if __name__ == "__main__":
     monitor_auctions()
+
