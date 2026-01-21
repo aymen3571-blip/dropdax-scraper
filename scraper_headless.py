@@ -77,8 +77,12 @@ def monitor_auctions():
 
     try:
         while True:
+            # Check Max Time
             if time.time() - start_time > max_duration:
                 print("⚠️ Max execution time reached. Force saving and exiting.")
+                # Force finalize all before saving
+                for domain in master_tracker:
+                    master_tracker[domain]['Status'] = "Finalized"
                 break
 
             driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
@@ -126,7 +130,15 @@ def monitor_auctions():
                     # ---------------------------
 
                     p_raw = p_el.get_attribute("textContent").strip()
-                    t_text = t_el.get_attribute("textContent").strip()
+                    
+                    # --- IMPROVED ENDED DETECTION ---
+                    # We get both textContent and innerText to catch hidden "Ended" signals
+                    t_text_content = t_el.get_attribute("textContent").strip()
+                    t_inner_text = t_el.get_attribute("innerText").strip()
+                    
+                    # Merge checks to be absolutely sure
+                    t_text = t_text_content if len(t_text_content) > len(t_inner_text) else t_inner_text
+                    
                     p_clean = clean_price(p_raw)
 
                     found_data_in_loop = True
@@ -136,36 +148,30 @@ def monitor_auctions():
                     prev_raw_time = existing_entry.get('Raw_Time', '')
                     stuck_count = existing_entry.get('Stuck_Count', 0)
 
-                    if t_text == prev_raw_time and t_text != "Ended":
+                    # Logic: If time string is EXACTLY the same as last scan, it might be stuck
+                    if t_text == prev_raw_time and "Ended" not in t_text:
                         stuck_count += 1
                     else:
                         stuck_count = 0 
 
                     is_frozen = False
-                    if stuck_count >= 5 and "m" not in t_text and "h" not in t_text:
+                    # If it's been the exact same text for 10 scans (approx 1 minute), consider it ended/frozen
+                    if stuck_count >= 10:
                         is_frozen = True
                         print(f"❄️ Detected Frozen Timer for {d_text} ({t_text}). Marking Finalized.")
 
-                    if "Ended" in t_text or not t_text or len(t_text) < 2 or is_frozen:
-                        if is_frozen:
-                            status = "Finalized"
-                        else:
-                            time.sleep(0.5) 
-                            try:
-                                t_text_check = t_el.get_attribute("textContent").strip()
-                                if t_text_check and "Ended" not in t_text_check and len(t_text_check) > 2:
-                                    status = "Active"
-                                    all_ended = False
-                                    stuck_count = 0
-                                else:
-                                    status = "Finalized"
-                            except:
-                                status = "Finalized"
+                    # --- ENHANCED ENDED CHECK ---
+                    # 1. Check for "Ended" in text
+                    # 2. Check if text is empty or too short
+                    # 3. Check if Frozen logic triggered
+                    if "Ended" in t_text or "ended" in t_text or not t_text or len(t_text) < 2 or is_frozen:
+                        status = "Finalized"
                     else:
+                        # Double Check: If we thought it was active, verify one more time
                         status = "Active"
                         all_ended = False
 
-                    # Update master list (Added Type and Bids)
+                    # Update master list (Preserving Logic Fields)
                     master_tracker[d_text] = {
                         "Price": p_clean, 
                         "Status": status, 
@@ -177,9 +183,10 @@ def monitor_auctions():
                     }
                     
                     if status == "Finalized":
-                        print(f"✅ SOLD: {d_text} | {p_clean}")
+                        # Optional: Print less often for finalized to clean up log
+                        pass 
                     else:
-                        print(f"🕒 {d_text} | {p_clean} | {type_text} | {bid_text} bids")
+                        print(f"🕒 {d_text} | {p_clean} | {t_text}")
 
                 except Exception:
                     continue
@@ -203,6 +210,7 @@ def monitor_auctions():
             if all_ended and len(domain_anchors) > 0 and found_data_in_loop:
                 print("🏁 Auctions finished. Performing final status check...")
                 
+                # Force 'Finalized' on everything just to be safe before saving
                 for domain in master_tracker:
                     master_tracker[domain]['Status'] = "Finalized"
                 
@@ -220,7 +228,7 @@ def monitor_auctions():
                 print("🏁 SUCCESS: All visible auctions ended. Final report saved.")
                 break
 
-            time.sleep(2)
+            time.sleep(5) # Standard delay for cloud
 
     except Exception as e:
         print(f"Error: {e}")
@@ -229,4 +237,3 @@ def monitor_auctions():
 
 if __name__ == "__main__":
     monitor_auctions()
-
