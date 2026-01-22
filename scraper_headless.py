@@ -111,7 +111,6 @@ def monitor_auctions():
 
                     row = d_el.find_element(By.XPATH, "./ancestor::section[1]")
                     p_el = row.find_element(By.ID, "domainPrice")
-                    t_el = row.find_element(By.ID, "time-remaining")
                     
                     # --- NEW DATA EXTRACTION ---
                     try:
@@ -127,18 +126,28 @@ def monitor_auctions():
                         bid_text = bid_el.get_attribute("textContent").strip()
                     except:
                         bid_text = "0"
-                    # ---------------------------
+                    
+                    # --- CRITICAL FIX: ROBUST TIME EXTRACTION ---
+                    t_text = ""
+                    try:
+                        # 1. Try to find the ACTIVE timer ID
+                        t_el = row.find_element(By.ID, "time-remaining")
+                        t_text = t_el.get_attribute("textContent").strip()
+                    except:
+                        # 2. If ID is missing, the auction likely ENDED. Look for the "Ended" translation attribute.
+                        try:
+                            ended_el = row.find_element(By.CSS_SELECTOR, "[translation='TimeRemaining_Ended']")
+                            t_text = "Ended"
+                        except:
+                            # 3. Fallback: Get text of the parent container
+                            try:
+                                parent_time = row.find_element(By.TAG_NAME, "app-time-remaining")
+                                t_text = parent_time.get_attribute("textContent").strip()
+                            except:
+                                t_text = "N/A"
+                    # --------------------------------------------
 
                     p_raw = p_el.get_attribute("textContent").strip()
-                    
-                    # --- IMPROVED ENDED DETECTION ---
-                    # We get both textContent and innerText to catch hidden "Ended" signals
-                    t_text_content = t_el.get_attribute("textContent").strip()
-                    t_inner_text = t_el.get_attribute("innerText").strip()
-                    
-                    # Merge checks to be absolutely sure
-                    t_text = t_text_content if len(t_text_content) > len(t_inner_text) else t_inner_text
-                    
                     p_clean = clean_price(p_raw)
 
                     found_data_in_loop = True
@@ -161,7 +170,7 @@ def monitor_auctions():
                         print(f"❄️ Detected Frozen Timer for {d_text} ({t_text}). Marking Finalized.")
 
                     # --- ENHANCED ENDED CHECK ---
-                    # 1. Check for "Ended" in text
+                    # 1. Check for "Ended" in text (covers our new manual "Ended" string)
                     # 2. Check if text is empty or too short
                     # 3. Check if Frozen logic triggered
                     if "Ended" in t_text or "ended" in t_text or not t_text or len(t_text) < 2 or is_frozen:
@@ -171,24 +180,25 @@ def monitor_auctions():
                         status = "Active"
                         all_ended = False
 
-                    # Update master list (Preserving Logic Fields)
+                    # Update master list
                     master_tracker[d_text] = {
                         "Price": p_clean, 
                         "Status": status, 
-                        "Type": type_text,     # NEW
-                        "Bids": bid_text,      # NEW
+                        "Type": type_text,     
+                        "Bids": bid_text,      
                         "Raw_Time": t_text,       
                         "Stuck_Count": stuck_count, 
                         "Date": time.strftime("%Y-%m-%d")
                     }
                     
                     if status == "Finalized":
-                        # Optional: Print less often for finalized to clean up log
                         pass 
                     else:
                         print(f"🕒 {d_text} | {p_clean} | {t_text}")
 
-                except Exception:
+                except Exception as e:
+                    # Debug print to see if rows are failing silently
+                    # print(f"Row skip error: {e}") 
                     continue
 
             # --- CSV UPDATE (CLEAN FORMAT FOR WORDPRESS) ---
@@ -198,8 +208,8 @@ def monitor_auctions():
                     "Price": v['Price'], 
                     "Status": v['Status'], 
                     "Date": v['Date'],
-                    "Type": v.get('Type', 'N/A'), # NEW COLUMN
-                    "Bids": v.get('Bids', '0')    # NEW COLUMN
+                    "Type": v.get('Type', 'N/A'), 
+                    "Bids": v.get('Bids', '0')    
                 } for k, v in master_tracker.items()]
                 
                 df = pd.DataFrame(clean_list)
