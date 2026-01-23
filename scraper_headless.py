@@ -82,7 +82,7 @@ def monitor_auctions():
                 print("⚠️ Max execution time reached. Force saving and exiting.")
                 # Force finalize all before saving
                 for domain in master_tracker:
-                    master_tracker[domain]['Status'] = "Finalized"
+                    master_tracker[domain]['Status'] = "SOLD"
                 break
 
             driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
@@ -167,14 +167,14 @@ def monitor_auctions():
                     # If it's been the exact same text for 10 scans (approx 1 minute), consider it ended/frozen
                     if stuck_count >= 10:
                         is_frozen = True
-                        print(f"❄️ Detected Frozen Timer for {d_text} ({t_text}). Marking Finalized.")
+                        print(f"❄️ Detected Frozen Timer for {d_text} ({t_text}). Marking SOLD.")
 
                     # --- ENHANCED ENDED CHECK ---
                     # 1. Check for "Ended" in text (covers our new manual "Ended" string)
                     # 2. Check if text is empty or too short
                     # 3. Check if Frozen logic triggered
                     if "Ended" in t_text or "ended" in t_text or not t_text or len(t_text) < 2 or is_frozen:
-                        status = "Finalized"
+                        status = "SOLD"
                     else:
                         # Double Check: If we thought it was active, verify one more time
                         status = "Active"
@@ -191,7 +191,7 @@ def monitor_auctions():
                         "Date": time.strftime("%Y-%m-%d")
                     }
                     
-                    if status == "Finalized":
+                    if status == "SOLD":
                         pass 
                     else:
                         print(f"🕒 {d_text} | {p_clean} | {t_text}")
@@ -220,9 +220,9 @@ def monitor_auctions():
             if all_ended and len(domain_anchors) > 0 and found_data_in_loop:
                 print("🏁 Auctions finished. Performing final status check...")
                 
-                # Force 'Finalized' on everything just to be safe before saving
+                # Force 'SOLD' on everything just to be safe before saving
                 for domain in master_tracker:
-                    master_tracker[domain]['Status'] = "Finalized"
+                    master_tracker[domain]['Status'] = "SOLD"
                 
                 # Final Clean Save
                 final_list = [{
@@ -247,3 +247,4 @@ def monitor_auctions():
 
 if __name__ == "__main__":
     monitor_auctions()
+
