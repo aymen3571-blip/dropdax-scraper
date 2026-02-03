@@ -1,7 +1,7 @@
 name: Daily DropDax Scraper
 
 on:
-  workflow_dispatch: # Allows you to run it manually with a button click
+  workflow_dispatch: # Allows you to run it manually with a button click + Allows cron-job.org to trigger this
 
 permissions:
   contents: write
