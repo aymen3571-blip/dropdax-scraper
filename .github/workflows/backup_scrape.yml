@@ -1,0 +1,35 @@
+name: Daily DropDax Scraper
+
+on:
+  workflow_dispatch: # Allows you to run it manually with a button click + Allows cron-job.org to trigger this
+
+permissions:
+  contents: write
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install Libraries
+        run: |
+          pip install -r requirements.txt
+
+      - name: Run Scraper
+        env:
+          CSV_FILENAME: dropcatch_results_backup.csv
+        run: python scraper_headless.py
+
+      - name: Commit and Push Data
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "Auto-update daily auction results"
+          file_pattern: "*.csv"
