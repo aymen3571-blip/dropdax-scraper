@@ -1,4 +1,4 @@
-name: Daily DropDax Scraper
+name: Backup DropDax Scraper
 
 on:
   workflow_dispatch: # Allows you to run it manually with a button click + Allows cron-job.org to trigger this
