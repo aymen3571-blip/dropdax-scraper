@@ -61,8 +61,9 @@ def apply_settings(wait):
 
 def monitor_auctions():
     # --- CLOUD PATH CONFIGURATION ---
-    # We save to the current folder so GitHub Actions can find it easily
-    save_path = "dropcatch_results.csv"
+    # NEW: Check for Environment Variable first, default to original if missing
+    save_path = os.getenv('CSV_FILENAME', 'dropcatch_results.csv')
+    print(f"📂 Saving data to: {save_path}") # Log which file we are using
     
     driver.get("https://www.dropcatch.com")
     wait = WebDriverWait(driver, 20)
@@ -247,4 +248,3 @@ def monitor_auctions():
 
 if __name__ == "__main__":
     monitor_auctions()
-
