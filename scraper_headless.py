@@ -30,8 +30,17 @@ def apply_settings(wait):
     """
     PROTECTION CODE: Exact logic from your local script.
     """
+    # NEW: Get Target Extension from Environment Variable (Default to .com)
+    # This allows us to switch missions (.net, .org) from GitHub without changing code.
+    target_extension = os.getenv('TARGET_EXTENSION', '.com')
+    print(f"🎯 Mission Target: {target_extension}")
+
     print("Applying filters...")
-    filter_names = [".com", "AuctionsEndingToday", "AuctionsWithBids", "NoDashes", "NoNumbers"]
+    
+    # UPDATED: Removed "NoDashes" and "NoNumbers" to broaden the search scope.
+    # UPDATED: Replaced hardcoded ".com" with dynamic 'target_extension'.
+    filter_names = [target_extension, "AuctionsEndingToday", "AuctionsWithBids"]
+    
     for name in filter_names:
         try:
             checkbox = wait.until(EC.presence_of_element_located((By.NAME, name)))
@@ -74,7 +83,7 @@ def monitor_auctions():
     # --- SAFETY TIMEOUT FOR GITHUB ---
     # We add a max limit so the script doesn't run forever and consume all your free GitHub minutes
     start_time = time.time()
-    max_duration = 60 * 60  # 60 minutes max run time
+    max_duration = 90 * 60  # 90 minutes (1.5 hours) max run time
 
     try:
         while True:
