@@ -1,0 +1,45 @@
+name: Scraper - COM Mission
+
+on:
+  workflow_dispatch: # Triggered by cron-job.org Or Allows you to run it manually
+
+permissions:
+  contents: write
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install Libraries
+        run: |
+          pip install -r requirements.txt
+
+      - name: Run Scraper
+        env:
+          CSV_FILENAME: results_org.csv       # <--- FILE NAME
+          TARGET_EXTENSION: .org              # <--- MISSION TARGET
+        run: python scraper_headless.py
+
+      # --- SAFE UPDATE LOGIC (Prevents Race Conditions) ---
+      - name: Safe Pull Logic
+        run: |
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+          git stash
+          git pull origin main --rebase
+          git stash pop || echo "Nothing to pop, proceeding..."
+
+      - name: Commit and Push Data
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "Auto-update .COM results"
+          file_pattern: "*.csv"
