@@ -28,11 +28,19 @@ jobs:
           CSV_FILENAME: dropcatch_results_backup.csv
         run: python scraper_headless.py
 
-      - name: Pull latest changes
+      - name: Safe Pull Logic
         run: |
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions[bot]"
+          
+          # 1. Hide the new CSV temporarily
+          git stash
+          
+          # 2. Update the code from GitHub
           git pull origin main --rebase
+          
+          # 3. Bring the CSV back (this might say 'No stash entries found' if it's a new file, so we allow failure)
+          git stash pop || echo "Nothing to pop, proceeding..."
 
       - name: Commit and Push Data
         uses: stefanzweifel/git-auto-commit-action@v5
