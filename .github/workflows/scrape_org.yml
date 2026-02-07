@@ -41,5 +41,5 @@ jobs:
       - name: Commit and Push Data
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: "Auto-update .COM results"
+          commit_message: "Auto-update .ORG results"
           file_pattern: "*.csv"
