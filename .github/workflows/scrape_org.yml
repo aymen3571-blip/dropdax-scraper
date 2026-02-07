@@ -1,4 +1,4 @@
-name: Scraper - COM Mission
+name: Scraper - ORG Mission
 
 on:
   workflow_dispatch: # Triggered by cron-job.org Or Allows you to run it manually
