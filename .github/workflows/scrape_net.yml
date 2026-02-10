@@ -29,17 +29,26 @@ jobs:
           TARGET_EXTENSION: .net              # <--- MISSION TARGET
         run: python scraper_headless.py
 
-      # --- SAFE UPDATE LOGIC (Prevents Race Conditions) ---
-      - name: Safe Pull Logic
+      # --- Prevents Race Conditions ---
+      - name: Commit and Push with Retry
         run: |
+          # 1. Configure Git
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions[bot]"
-          git stash
-          git pull origin main --rebase
-          git stash pop || echo "Nothing to pop, proceeding..."
-
-      - name: Commit and Push Data
-        uses: stefanzweifel/git-auto-commit-action@v5
-        with:
-          commit_message: "Auto-update .NET results"
-          file_pattern: "*.csv"
+          
+          # 2. Add and Commit LOCALLY first (This fixes the "Unstaged Changes" error)
+          git add *.csv
+          git commit -m "Auto-update auction results" || echo "No changes to commit"
+          
+          # 3. Pull/Push Loop (Retries up to 5 times if race condition happens)
+          n=0
+          until [ "$n" -ge 5 ]
+          do
+             # Pull latest changes (rebase our commit on top) and try to push
+             git pull origin main --rebase && git push origin main && break
+             
+             # If failed, wait random seconds and try again
+             echo "Push failed. Retrying in 10 seconds..."
+             n=$((n+1))
+             sleep 10
+          done
